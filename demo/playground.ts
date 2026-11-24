@@ -40,6 +40,8 @@ const LABEL_FONTS: Record<string, string> = {
   Inter: '"Inter", ui-sans-serif, system-ui, sans-serif',
 }
 const COLOURS = ["accent", "body", "tray", "paper", "ink", "shadow"] as const
+/** Where the built script is served, so pasted HTML works anywhere. */
+const SCRIPT_URL = "https://photo-copier.vercel.app/copier.iife.js"
 type Colour = (typeof COLOURS)[number]
 /** The palette the preview shows, and the one the colour controls edit. */
 const themeKey = (): "light" | "dark" => (S.theme === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : S.theme === "dark" ? "dark" : "light")
@@ -265,8 +267,10 @@ const camel = (k: string) => k.replace(/-(\w)/g, (_, c: string) => c.toUpperCase
 function code(): string {
   const a = attrs()
   if (tab === "html") {
-    const lines = a.map(([k, v]) => `  ${k}="${esc(v)}"`)
-    return `<script src="copier.iife.js"></script>\n\n<photo-copier${lines.length ? "\n" + lines.join("\n") + "\n" : ""}></photo-copier>`
+    // ready to paste anywhere, including a Framer or Webflow embed: the script is served from the live demo,
+    // and the copier fills whatever box it's given (it keeps its shape and centres itself)
+    const lines = [...a.map(([k, v]) => `  ${k}="${esc(v)}"`), `  style="width: 100%; height: 100%"`]
+    return `<script src="${SCRIPT_URL}"></script>\n\n<photo-copier\n${lines.join("\n")}\n></photo-copier>`
   }
   const p: string[] = []
   const per: Record<"light" | "dark", string[]> = { light: [], dark: [] }

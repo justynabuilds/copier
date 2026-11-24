@@ -8,11 +8,11 @@ It ships as a plain web component that works on any site (Webflow embed, WordPre
 
 ## Quick start
 
-Any site:
+Any site, including a Framer or Webflow embed. The script is served from the live demo, so this works as pasted:
 
 ```html
-<script src="copier.iife.js"></script>
-<photo-copier value="hello@example.com"></photo-copier>
+<script src="https://photo-copier.vercel.app/copier.iife.js"></script>
+<photo-copier value="hello@example.com" style="width: 100%; height: 100%"></photo-copier>
 <script>
   document.querySelector("photo-copier").addEventListener("copied", (e) => console.log(e.detail.value))
 </script>
@@ -26,7 +26,7 @@ import { Copier } from "@justbuilt/copier/react"
 <Copier value="hello@example.com" theme="light" onCopied={({ value }) => track("copied", value)} />
 ```
 
-The copier is drawn at 420 × 640 and scales to fit whatever box you give it (420px wide by default, keeping its shape). Build the script yourself with `npm run build` (see [Development](#development)).
+The copier is drawn at 420 × 640 and scales to fit whatever box you give it, keeping its shape (420px wide by default). To host the script yourself, build it with `npm run build` (see [Development](#development)) and point the `src` at your copy; `copier.js` is the ES module version.
 
 ## Attributes
 
@@ -108,10 +108,10 @@ Requires Node 22.18 or newer (see `.nvmrc`) and npm.
 | `npm test` | Unit tests for the colour, palette, font, layout, display and noise maths. |
 | `npm run typecheck` | TypeScript check. |
 | `npm run build` | `dist/copier.js` (ESM), `dist/copier.iife.js` (script tag) and `dist/types`. |
-| `npm run build:site` | The demo site Vercel serves (`site-dist`): `/`, `/playground`, `/demo/selftest.html`. |
+| `npm run build:site` | The demo site Vercel serves (`site-dist`): `/`, `/playground`, `/demo/selftest.html`, plus `/copier.iife.js` and `/copier.js` for embeds. |
 
 Typecheck, tests and build also run on GitHub for every push. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to make a change and [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## License
 
-All rights reserved for now; the license hasn't been chosen yet. See [LICENSE.md](LICENSE.md).
+Free for personal and other non-commercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). Commercial use (client work, products, sites that make money) needs a paid license: open an issue to ask.
