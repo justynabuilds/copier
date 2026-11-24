@@ -1,0 +1,10 @@
+/* The demo stage: the component alone on a plain white page, like a component preview page.
+   Used full-page on / and inside the playground preview. */
+.cp-stage{position:relative;min-height:100svh;display:grid;place-items:center;padding:48px 16px 72px;box-sizing:border-box;background:#FFFFFF}
+.cp-stage photo-copier{width:min(420px, 100%)}
+html:has(body.demo){background:#FFFFFF}
+body.demo{margin:0;background:#FFFFFF}
+.pg-link{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);
+  font:13px/1 "Geist", ui-sans-serif, system-ui, sans-serif;color:#8A8B90;text-decoration:none;white-space:nowrap}
+.pg-link:hover{color:#141416}
+.pg-link:focus-visible{outline:2px solid #141416;outline-offset:4px;border-radius:2px}

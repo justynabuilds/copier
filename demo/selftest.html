@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Copier self-test</title>
+  <style>body{margin:0;font:14px/1.5 ui-monospace, Menlo, monospace;background:#fff;color:#141416}main{display:flex;gap:24px;padding:24px;align-items:flex-start;flex-wrap:wrap}pre{padding:0 24px}</style>
+</head>
+<body>
+  <main>
+    <photo-copier id="live" theme="light" value="test@example.com" sound="off" haptics="off"></photo-copier>
+    <photo-copier id="still" still="tray" value="still@example.com" style="width:210px"></photo-copier>
+  </main>
+  <pre id="out">running…</pre>
+  <script type="module" src="./selftest.ts"></script>
+</body>
+</html>
