@@ -4,6 +4,8 @@ A copy-to-clipboard button as a desktop photocopier. The visitor puts the slip o
 
 It ships as a plain web component that works on any site (Webflow embed, WordPress, Squarespace, Shopify, plain HTML) and as a React component. Both run on the same framework-free engine and render inside a shadow root, so the host site's CSS can't break them.
 
+**[Live demo](https://photo-copier.vercel.app)** · **[Playground](https://photo-copier.vercel.app/playground)** (every option in a panel, with copyable HTML and React code)
+
 ## Quick start
 
 Any site:
