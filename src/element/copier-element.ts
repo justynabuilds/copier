@@ -1,19 +1,15 @@
-import { fitDesk } from "../core/layout.ts"
-import { mount, type FontSpec } from "../core/machine.ts"
-import { PALETTES, cssVars, resolve, type Palette, type Theme } from "../core/palette.ts"
 import { css } from "../core/color.ts"
+import { fontSpecs } from "../core/fonts.ts"
+import { fitDesk } from "../core/layout.ts"
+import { mount } from "../core/machine.ts"
+import { COLOUR_KEYS, cssVars, paletteFor, resolve, type Theme } from "../core/palette.ts"
 import { markup, styles } from "../core/styles.ts"
 
 export interface CopiedDetail {
   value: string
 }
 
-// Fonts already on the device. Nothing is downloaded: set value-font / label-font to use your own.
-const MONO_FALLBACK = '"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace'
-const SANS_FALLBACK = '"Geist", "Inter", ui-sans-serif, system-ui, sans-serif'
-
 const DEFAULTS = { label: "Email", value: "hello@example.com", mark: "JB·01 COPIER" }
-const COLOURS = ["body", "tray", "accent", "paper", "ink", "shadow", "strength"] as const
 
 /**
  * <photo-copier value="hello@example.com"></photo-copier>
@@ -22,7 +18,12 @@ const COLOURS = ["body", "tray", "accent", "paper", "ink", "shadow", "strength"]
  * the lamp scans it, a toner copy slides into the tray, and taking the copy out copies the value.
  */
 export class PhotoCopierElement extends HTMLElement {
-  static observedAttributes = ["label", "value", "mark", "theme", ...COLOURS, "value-font", "label-font", "sound", "haptics", "copies", "still"]
+  static observedAttributes = [
+    "label", "value", "mark", "theme",
+    ...COLOUR_KEYS.flatMap((k) => [k, `light-${k}`, `dark-${k}`]),
+    "value-font", "value-weight", "value-style", "label-font", "label-weight", "label-style",
+    "sound", "haptics", "copies", "still",
+  ]
 
   private root: ShadowRoot
   private desk: HTMLDivElement
@@ -77,22 +78,7 @@ export class PhotoCopierElement extends HTMLElement {
     const t = (this.getAttribute("theme") || "dark") as Theme
     return t === "auto" ? (this.dark.matches ? "dark" : "light") : t === "light" ? "light" : "dark"
   }
-  private palette(): Palette {
-    const p: Palette = { ...PALETTES[this.theme] }
-    for (const k of COLOURS) {
-      const v = this.getAttribute(k)
-      if (v === null || v.trim() === "") continue
-      if (k === "strength") p.strength = parseFloat(v)
-      else p[k] = v
-    }
-    return p
-  }
-  private fonts(): { value: FontSpec; label: FontSpec } {
-    return {
-      value: { family: this.getAttribute("value-font") || MONO_FALLBACK, weight: 500, style: "normal" },
-      label: { family: this.getAttribute("label-font") || SANS_FALLBACK, weight: 600, style: "normal" },
-    }
-  }
+  private attr = (name: string) => this.getAttribute(name)
 
   // ---------- building ----------
 
@@ -111,8 +97,8 @@ export class PhotoCopierElement extends HTMLElement {
   }
 
   private update() {
-    const pal = resolve(this.palette())
-    const fonts = this.fonts()
+    const pal = resolve(paletteFor(this.theme, this.attr))
+    const fonts = fontSpecs(this.attr)
     for (const [name, v] of Object.entries(cssVars(pal, fonts.value.family))) this.desk.style.setProperty(name, v)
 
     const still = this.getAttribute("still")

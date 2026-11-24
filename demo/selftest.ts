@@ -68,6 +68,22 @@ async function run() {
   await wait(150)
   check("changing the body colour restyles without a rebuild", $(live, ".cp-machine") === before && $(live, ".cp-desk")!.style.getPropertyValue("--cp-b") === "rgba(32,48,64,1)")
 
+  // per-theme colours: a dark-only accent waits until the theme is dark
+  live.setAttribute("dark-accent", "#3d6bff")
+  await wait(150)
+  check("dark-accent leaves the light theme alone", $(live, ".cp-desk")!.style.getPropertyValue("--cp-a") === "rgba(226,72,31,1)")
+  const darkReady = ready(live)
+  live.setAttribute("theme", "dark")
+  await Promise.race([darkReady, wait(4000)])
+  check("switching to dark applies the dark accent", $(live, ".cp-desk")!.style.getPropertyValue("--cp-a") === "rgba(61,107,255,1)")
+
+  // font weight is printed into the textures, so it rebuilds the machine
+  const machineBefore = $(live, ".cp-machine")
+  const weightReady = ready(live)
+  live.setAttribute("value-weight", "700")
+  const rebuiltForWeight = await Promise.race([weightReady.then(() => true), wait(4000).then(() => false)])
+  check("a new value weight rebuilds the machine", rebuiltForWeight && $(live, ".cp-machine") !== machineBefore)
+
   out.textContent = `${results.join("\n")}\n\n${failed ? `${failed} failed` : `all ${results.length} passed`}`
   document.body.dataset.done = failed ? "fail" : "pass"
 }

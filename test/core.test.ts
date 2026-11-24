@@ -76,3 +76,32 @@ test("seeded randomness repeats exactly, so each copy's specks are stable but un
   assert.equal(n.length, 16 * 8)
   assert.ok(n.every((v) => v >= 0 && v <= 1))
 })
+
+import { paletteFor } from "../src/core/palette.ts"
+import { MONO_FALLBACK, SANS_FALLBACK, fontSpecs } from "../src/core/fonts.ts"
+
+const attrs = (o: Record<string, string>) => (name: string) => (name in o ? o[name] : null)
+
+test("per-theme colours: light-/dark- beat the shared colour, which beats the theme default", () => {
+  const a = attrs({ accent: "#111111", "dark-accent": "#3d6bff", "light-body": "#ffffff" })
+  assert.equal(paletteFor("dark", a).accent, "#3d6bff")
+  assert.equal(paletteFor("light", a).accent, "#111111")
+  assert.equal(paletteFor("light", a).body, "#ffffff")
+  assert.equal(paletteFor("dark", a).body, PALETTES.dark.body)
+})
+
+test("empty colour attributes fall through, and a bad strength keeps the theme's", () => {
+  const a = attrs({ "dark-accent": " ", accent: "#222222", strength: "loud" })
+  assert.equal(paletteFor("dark", a).accent, "#222222")
+  assert.equal(paletteFor("dark", a).strength, PALETTES.dark.strength)
+  assert.equal(paletteFor("light", attrs({ "light-strength": "40" })).strength, 40)
+})
+
+test("fonts: device fonts at 500 and 600 by default; weight and italic are configurable", () => {
+  const d = fontSpecs(attrs({}))
+  assert.deepEqual(d.value, { family: MONO_FALLBACK, weight: 500, style: "normal" })
+  assert.deepEqual(d.label, { family: SANS_FALLBACK, weight: 600, style: "normal" })
+  const f = fontSpecs(attrs({ "value-font": "Space Mono", "value-weight": "700", "value-style": "Italic", "label-weight": "1200" }))
+  assert.deepEqual(f.value, { family: "Space Mono", weight: 700, style: "italic" })
+  assert.equal(f.label.weight, 600, "out-of-range weights fall back")
+})

@@ -36,6 +36,26 @@ export const PALETTES: Record<"light" | "dark", Palette> = {
   },
 }
 
+export const COLOUR_KEYS = ["body", "tray", "accent", "paper", "ink", "shadow", "strength"] as const
+
+/**
+ * The palette for one theme, read from attributes. Like the two palettes in the Framer panel:
+ * `light-accent` / `dark-accent` set a colour for one theme only, `accent` sets it for both,
+ * and anything left unset comes from the theme's default.
+ */
+export function paletteFor(theme: "light" | "dark", attr: (name: string) => string | null): Palette {
+  const p: Palette = { ...PALETTES[theme] }
+  for (const k of COLOUR_KEYS) {
+    const v = [attr(`${theme}-${k}`), attr(k)].find((x) => x !== null && x.trim() !== "")
+    if (v === undefined || v === null) continue
+    if (k === "strength") {
+      const n = parseFloat(v)
+      if (Number.isFinite(n)) p.strength = n
+    } else p[k] = v
+  }
+  return p
+}
+
 export type Resolved = { body: RGB; tray: RGB; accent: RGB; paper: RGB; ink: RGB; shadow: RGB; strength: number }
 
 /** Parses a palette into numbers; the tray falls back to the body colour. */

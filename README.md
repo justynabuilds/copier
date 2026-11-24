@@ -40,13 +40,16 @@ The copier is drawn at 420 × 640 and scales to fit whatever box you give it (42
 | `body`, `tray` | from the theme | Machine and tray colour. The tray falls back to the body. |
 | `paper`, `ink` | from the theme | The slip and its type. |
 | `shadow`, `strength` | from the theme | Shadow colour and strength in % (0 to 200). |
+| `light-*`, `dark-*` | none | Any colour above for one theme only, for example `dark-accent` or `light-body`. They win over the shared colour, so with `theme="auto"` each mode can have its own palette. |
 | `value-font`, `label-font` | device mono, device sans | Any CSS font family. Nothing is downloaded: load the font on your page. |
+| `value-weight`, `label-weight` | `500`, `600` | Font weight, 100 to 900. |
+| `value-style`, `label-style` | `normal` | `italic` for italic type. |
 | `sound` | on | `off` mutes the lid, motor, paper and the copied beep. |
 | `haptics` | on | `off` turns off the small vibrations on phones. |
 | `copies` | `stay` | `stay`: copies stay where they're dropped. `clear`: they slide away after copying. |
 | `still` | none | `rest` or `tray`: a frozen, non-interactive state for thumbnails and previews. |
 
-React props use the same names in camelCase (`valueFont`, `labelFont`), with `sound` and `haptics` as booleans.
+React props use the same names in camelCase (`valueFont`, `labelWeight`), with `sound` and `haptics` as booleans and per-theme colours as objects: `light={{ accent: "#e2481f" }}`, `dark={{ accent: "#3d6bff" }}`.
 
 ## Events
 
@@ -72,9 +75,14 @@ Size it like an image: set `width`, `height` or both on the element. With both, 
 ## How the code is organised
 
 ```
-src/core/machine.ts                    builds the textures and drives lid, lamp, display, copies, sound and clipboard
+src/core/machine.ts                    runs the sequence: lid, lamp, feeding the slip, scanning, clipboard, build queue
+src/core/copies.ts                     copies in the tray: printing them out, taking them out (click, keys, drag)
+src/core/sheets.ts                     everything printed on paper and glass: slip, backlit slip, toner copies, dust, rulers
+src/core/display.ts                    the dot-matrix display: messages, marquee, blink, pauses off screen
+src/core/sound.ts                      synthesized foley and phone haptics
 src/core/textures.ts                   seeded noise, paper with fibres and tooth, grain and foam, all drawn to canvas
-src/core/palette.ts                    default palettes and the --cp-* variables derived from them (unit-tested)
+src/core/palette.ts                    default palettes, per-theme colours and the --cp-* variables (unit-tested)
+src/core/fonts.ts                      value and label font settings (unit-tested)
 src/core/layout.ts                     design size, sheet sizes, desk fitting and value sizing (unit-tested)
 src/core/matrix.ts, color.ts           dot-matrix display font and colour maths (unit-tested)
 src/core/styles.ts                     shadow-root styles and the machine's markup
@@ -87,7 +95,7 @@ vite.config.ts                         library build (dist/)
 vite.site.config.ts, vercel.json       demo site build and hosting
 ```
 
-The element reads its attributes, turns the colours into CSS variables and fits the 420 × 640 drawing into its box. When something that's printed or drawn changes (value, label, fonts, accent, paper, ink), it rebuilds the machine; colour-only changes just restyle it. Everything inside the machine is drawn once into canvases and moved with CSS and the Web Animations API, so nothing re-renders while it plays.
+The element reads its attributes, turns the colours into CSS variables and fits the 420 × 640 drawing into its box. When something that's printed or drawn changes (value, label, fonts, accent, paper, ink), it rebuilds the machine; colour-only changes just restyle it. `machine.ts` runs the sequence and hands each job to its own part: `sheets.ts` draws, `copies.ts` handles the tray, `display.ts` the readout and `sound.ts` the foley. Everything is drawn once into canvases and moved with CSS and the Web Animations API, so nothing re-renders while it plays.
 
 ## Development
 
@@ -97,7 +105,7 @@ Requires Node 22.18 or newer (see `.nvmrc`) and npm.
 | --- | --- |
 | `npm install` | Install dependencies. |
 | `npm run dev` | Demo at http://localhost:4177, playground at `/demo/playground.html`, self-test at `/demo/selftest.html`. |
-| `npm test` | Unit tests for the colour, palette, layout, display and noise maths. |
+| `npm test` | Unit tests for the colour, palette, font, layout, display and noise maths. |
 | `npm run typecheck` | TypeScript check. |
 | `npm run build` | `dist/copier.js` (ESM), `dist/copier.iife.js` (script tag) and `dist/types`. |
 | `npm run build:site` | The demo site Vercel serves (`site-dist`): `/`, `/playground`, `/demo/selftest.html`. |

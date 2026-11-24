@@ -10,15 +10,15 @@ const initial = () => ({
   value: "hello@example.com",
   mark: "JB·01 COPIER",
   theme: "light",
-  accent: "",
-  body: "",
-  tray: "",
-  paper: "",
-  ink: "",
-  shadow: "",
-  strength: -1, // -1 = from the theme
+  // colours per palette, like the Framer panel; "" / -1 = the theme default
+  light: { accent: "", body: "", tray: "", paper: "", ink: "", shadow: "", strength: -1 },
+  dark: { accent: "", body: "", tray: "", paper: "", ink: "", shadow: "", strength: -1 },
   valueFont: "Device mono",
+  valueWeight: 500,
+  valueItalic: false,
   labelFont: "Device sans",
+  labelWeight: 600,
+  labelItalic: false,
   sound: true,
   haptics: true,
   copies: "stay",
@@ -40,12 +40,15 @@ const LABEL_FONTS: Record<string, string> = {
   Inter: '"Inter", ui-sans-serif, system-ui, sans-serif',
 }
 const COLOURS = ["accent", "body", "tray", "paper", "ink", "shadow"] as const
-const themeKey = () => (S.theme === "dark" ? "dark" : "light")
+type Colour = (typeof COLOURS)[number]
+/** The palette the preview shows, and the one the colour controls edit. */
+const themeKey = (): "light" | "dark" => (S.theme === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : S.theme === "dark" ? "dark" : "light")
+const paletteName = () => (themeKey() === "dark" ? "Dark" : "Light")
 const hex = (c: string) => "#" + parseColor(c, [0, 0, 0]).map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")
 
 /* ---------------- panel schema ---------------- */
 
-type Base = { k: Key; label: string; hint?: string | (() => string) }
+type Base = { k: Key | Colour | "strength"; label: string; hint?: string | (() => string) }
 type Ctl = Base & (
   | { type: "text"; max?: number }
   | { type: "slider"; min: number; max: number; step?: number; unit: string; fallback?: () => number }
@@ -63,7 +66,7 @@ const SCHEMA: [string, Ctl[]][] = [
   ]],
   ["Look", [
     { k: "theme", label: "Theme", type: "segment", options: [["light", "Light"], ["dark", "Dark"], ["auto", "Auto"]], hint: "Auto follows the visitor's device." },
-    { k: "accent", label: "Accent", type: "colour", hint: "Start key, display and the scan lamp." },
+    { k: "accent", label: "Accent", type: "colour", hint: () => `Start key, display and scan lamp. Editing the ${paletteName()} palette: switch Theme to edit the other.` },
     { k: "body", label: "Body", type: "colour" },
     { k: "tray", label: "Tray", type: "colour" },
     { k: "paper", label: "Paper", type: "colour" },
@@ -73,7 +76,11 @@ const SCHEMA: [string, Ctl[]][] = [
   ]],
   ["Type", [
     { k: "valueFont", label: "Value font", type: "select", options: () => Object.keys(VALUE_FONTS) },
+    { k: "valueWeight", label: "Value weight", type: "segment", options: [["400", "400"], ["500", "500"], ["700", "700"]] },
+    { k: "valueItalic", label: "Value italic", type: "toggle" },
     { k: "labelFont", label: "Label font", type: "select", options: () => Object.keys(LABEL_FONTS), hint: "Device fonts download nothing." },
+    { k: "labelWeight", label: "Label weight", type: "segment", options: [["500", "500"], ["600", "600"], ["700", "700"]] },
+    { k: "labelItalic", label: "Label italic", type: "toggle" },
   ]],
   ["Behaviour", [
     { k: "sound", label: "Sound", type: "toggle" },
@@ -95,8 +102,15 @@ let copier = document.getElementById("copier") as HTMLElementTagNameMap["photo-c
 const refresh: (() => void)[] = []
 let uid = 0
 
-function set<K extends Key>(k: K, v: (typeof S)[K]) {
-  S[k] = v
+const isPal = (k: string): k is Colour | "strength" => (COLOURS as readonly string[]).includes(k) || k === "strength"
+function get(k: string): unknown {
+  if (isPal(k)) return S[themeKey()][k]
+  return S[k as Key]
+}
+function set(k: string, v: unknown) {
+  if (isPal(k)) (S[themeKey()] as Record<string, unknown>)[k] = v
+  else if (k === "valueWeight" || k === "labelWeight") (S as Record<string, unknown>)[k] = Number(v)
+  else (S as Record<string, unknown>)[k] = v
   refreshAll()
   apply()
 }
@@ -129,48 +143,48 @@ for (const [title, ctls] of SCHEMA) {
     if (c.type === "text") {
       row.innerHTML = `${lab}<div class="ctl"><div class="fx"><input id="${id}" type="text" maxlength="${c.max ?? 40}" spellcheck="false"></div></div>`
       const i = row.querySelector("input")!
-      update = () => { if (document.activeElement !== i) i.value = String(S[k]) }
-      i.addEventListener("input", () => set(k, i.value as never))
+      update = () => { if (document.activeElement !== i) i.value = String(get(k)) }
+      i.addEventListener("input", () => set(k, i.value))
     } else if (c.type === "slider") {
       row.innerHTML = `${lab}<div class="ctl"><div class="sl"><input type="range" id="${id}" min="${c.min}" max="${c.max}" step="${c.step ?? 1}"><output></output></div></div>`
       const r = row.querySelector("input")!, out = row.querySelector("output")!
       update = () => {
-        const v = (S[k] as number) < 0 && c.fallback ? c.fallback() : (S[k] as number)
+        const v = (get(k) as number) < 0 && c.fallback ? c.fallback() : (get(k) as number)
         r.value = String(v)
         out.textContent = `${v}${c.unit === "%" ? "%" : ` ${c.unit}`}`
         fillTrack(r)
       }
-      r.addEventListener("input", () => set(k, +r.value as never))
+      r.addEventListener("input", () => set(k, +r.value))
     } else if (c.type === "select") {
       row.innerHTML = `${lab}<div class="ctl"><select class="in" id="${id}">${c.options().map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("")}</select></div>`
       const s = row.querySelector("select")!
-      update = () => { s.value = String(S[k]) }
-      s.addEventListener("change", () => set(k, s.value as never))
+      update = () => { s.value = String(get(k)) }
+      s.addEventListener("change", () => set(k, s.value))
     } else if (c.type === "segment") {
       row.innerHTML = `<span class="lab">${c.label}</span><div class="ctl"><div class="seg" role="group" aria-label="${c.label}">${c.options.map(([v, l]) => `<button type="button" data-v="${v}">${l}</button>`).join("")}</div></div>`
       const bs = [...row.querySelectorAll("button")]
-      update = () => bs.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === S[k])))
-      bs.forEach((b) => b.addEventListener("click", () => set(k, b.dataset.v as never)))
+      update = () => bs.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(get(k)))))
+      bs.forEach((b) => b.addEventListener("click", () => set(k, b.dataset.v)))
     } else if (c.type === "toggle") {
       row.innerHTML = `<span class="lab" id="${id}">${c.label}</span><div class="ctl"><button type="button" class="tog" role="switch" aria-labelledby="${id}"></button></div>`
       const b = row.querySelector("button")!
-      update = () => b.setAttribute("aria-checked", String(!!S[k]))
-      b.addEventListener("click", () => set(k, !S[k] as never))
+      update = () => b.setAttribute("aria-checked", String(!!get(k)))
+      b.addEventListener("click", () => set(k, !get(k)))
     } else if (c.type === "colour") {
       row.innerHTML = `${lab}<div class="ctl"><div class="fx col"><span class="sw"><input type="color" aria-label="${c.label} colour"></span><input id="${id}" spellcheck="false" maxlength="7"><button type="button" class="x" aria-label="Back to the theme colour">×</button></div></div>`
       const [pick, hx] = row.querySelectorAll("input")
       const sw = row.querySelector<HTMLElement>(".sw")!, x = row.querySelector<HTMLButtonElement>(".x")!
       update = () => {
-        const v = String(S[k])
-        pick.value = v || hex(PALETTES[themeKey()][k as (typeof COLOURS)[number]])
+        const v = String(get(k))
+        pick.value = v || hex(PALETTES[themeKey()][k as Colour])
         sw.style.background = pick.value
         hx.placeholder = "From theme"
         if (document.activeElement !== hx) hx.value = v.toUpperCase()
         x.hidden = !v
       }
-      pick.addEventListener("input", () => set(k, pick.value as never))
-      hx.addEventListener("input", () => { const v = hx.value.trim(); if (!v || /^#?[0-9a-f]{6}$/i.test(v)) set(k, (v && !v.startsWith("#") ? `#${v}` : v) as never) })
-      x.addEventListener("click", () => set(k, "" as never))
+      pick.addEventListener("input", () => set(k, pick.value))
+      hx.addEventListener("input", () => { const v = hx.value.trim(); if (!v || /^#?[0-9a-f]{6}$/i.test(v)) set(k, (v && !v.startsWith("#") ? `#${v}` : v)) })
+      x.addEventListener("click", () => set(k, ""))
     }
 
     if (c.hint) {
@@ -194,16 +208,29 @@ function attrs(): [string, string][] {
   if (S.label !== "Email") a.push(["label", S.label])
   if (S.mark !== "JB·01 COPIER") a.push(["mark", S.mark])
   if (S.theme !== "dark") a.push(["theme", S.theme])
-  for (const c of COLOURS) if (S[c]) a.push([c, S[c]])
-  if (S.strength >= 0) a.push(["strength", String(S.strength)])
+  // a colour set the same in both palettes is one shared attribute; otherwise light-/dark- per palette
+  for (const c of [...COLOURS, "strength"] as const) {
+    const unset = (v: string | number) => v === "" || v === -1
+    const l = S.light[c], d = S.dark[c]
+    if (!unset(l) && l === d) a.push([c, String(l)])
+    else {
+      if (!unset(l)) a.push([`light-${c}`, String(l)])
+      if (!unset(d)) a.push([`dark-${c}`, String(d)])
+    }
+  }
   if (VALUE_FONTS[S.valueFont]) a.push(["value-font", VALUE_FONTS[S.valueFont]])
+  if (S.valueWeight !== 500) a.push(["value-weight", String(S.valueWeight)])
+  if (S.valueItalic) a.push(["value-style", "italic"])
   if (LABEL_FONTS[S.labelFont]) a.push(["label-font", LABEL_FONTS[S.labelFont]])
+  if (S.labelWeight !== 600) a.push(["label-weight", String(S.labelWeight)])
+  if (S.labelItalic) a.push(["label-style", "italic"])
   if (!S.sound) a.push(["sound", "off"])
   if (!S.haptics) a.push(["haptics", "off"])
   if (S.copies !== "stay") a.push(["copies", S.copies])
   return a
 }
-const KNOWN = ["value", "label", "mark", "theme", ...COLOURS, "strength", "value-font", "label-font", "sound", "haptics", "copies"]
+const KNOWN = ["value", "label", "mark", "theme", ...[...COLOURS, "strength"].flatMap((c) => [c, `light-${c}`, `dark-${c}`]),
+  "value-font", "value-weight", "value-style", "label-font", "label-weight", "label-style", "sound", "haptics", "copies"]
 
 function apply() {
   const want = new Map(attrs())
@@ -241,11 +268,18 @@ function code(): string {
     const lines = a.map(([k, v]) => `  ${k}="${esc(v)}"`)
     return `<script src="copier.iife.js"></script>\n\n<photo-copier${lines.length ? "\n" + lines.join("\n") + "\n" : ""}></photo-copier>`
   }
-  const p = a.map(([k, v]) => {
-    if (k === "strength") return `strength={${v}}`
-    if (k === "sound" || k === "haptics") return `${k}={false}`
-    return `${camel(k)}=${JSON.stringify(v)}`
-  })
+  const p: string[] = []
+  const per: Record<"light" | "dark", string[]> = { light: [], dark: [] }
+  const val = (k: string, v: string) => (k.endsWith("strength") || k.endsWith("weight") ? v : JSON.stringify(v))
+  for (const [k, v] of a) {
+    const m = /^(light|dark)-(.+)$/.exec(k)
+    if (m) per[m[1] as "light" | "dark"].push(`${m[2]}: ${val(m[2], v)}`)
+    else if (k === "sound" || k === "haptics") p.push(`${k}={false}`)
+    else if (k === "strength" || k.endsWith("weight")) p.push(`${camel(k)}={${v}}`)
+    else if (k.endsWith("-style")) p.push(`${camel(k)}="italic"`)
+    else p.push(`${camel(k)}=${JSON.stringify(v)}`)
+  }
+  for (const t of ["light", "dark"] as const) if (per[t].length) p.push(`${t}={{ ${per[t].join(", ")} }}`)
   p.push(`onCopied={({ value }) => console.log(value)}`)
   return `import { Copier } from "@justbuilt/copier/react"\n\n<Copier\n${p.map((x) => "  " + x).join("\n")}\n/>`
 }

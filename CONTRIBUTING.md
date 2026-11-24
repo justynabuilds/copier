@@ -15,7 +15,7 @@ npm run dev        # demo at http://localhost:4177
 
 The code has three layers. Most changes start at the bottom and move up.
 
-1. **Core** (`src/core/`): the machine, its textures and the pure maths. Colour, palette, layout and display logic have no DOM and are tested in `test/core.test.ts`; add or update a test there for any change to them.
+1. **Core** (`src/core/`): `machine.ts` runs the sequence and calls the parts: `sheets.ts` (drawing), `copies.ts` (the tray), `display.ts`, `sound.ts`. Colour, palette, font, layout and display-font logic have no DOM and are tested in `test/core.test.ts`; add or update a test there for any change to them.
 2. **Web component** (`src/element/copier-element.ts`): reads attributes, fits the drawing into its box, rebuilds or restyles the machine, fires events. Styles and markup live in `src/core/styles.ts`.
 3. **React adapter** (`src/react/Copier.tsx`): a thin wrapper. When you add an attribute to the element, add the matching prop here.
 
@@ -43,4 +43,4 @@ The same typecheck, tests and build run automatically on GitHub for every push a
 
 - TypeScript, two-space indent (see `.editorconfig`), no semicolons.
 - Comments explain why, not what.
-- Keep the pure modules (color, palette, layout, matrix) free of DOM code so they stay testable.
+- Keep the pure modules (color, palette, fonts, layout, matrix) free of DOM code so they stay testable.
